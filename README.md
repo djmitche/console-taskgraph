@@ -42,6 +42,8 @@ const {sum} = await graph.run();
 console.log(sum);
 ```
 
+See `example.js` for a demo of some of the display options.
+
 # API
 
 A TaskGraph represents graph of tasks.  Task dependencies are in the form of
