@@ -14,48 +14,6 @@ const cliTruncate = require('cli-truncate');
 const unicodeProgress = require('unicode-progress');
 const Observable = require('zen-observable');
 
-/**
- * A graph of tasks.
- *
- * Task dependencies are in the form of named values that other tasks produce, stored in a map
- * called `context`.
- *
- * The graph will only begin executing a task when its requirements are satisfied.
- *
- * Each task has the shape
- *
- * {
- *   title: "..",      // display name for the task
- *   requires: [ .. ], // keys for values required before this task starts
- *   provides: [ .. ], // keys for values this task will provide
- *   run: async (requirements, utils) => ..,
- * }
- *
- * The async `run` function for a task is given an object `requirements` containing the values
- * named in `task.requires`.  It should return an object containing the keys given in `provides`.
- * As a convenience, a task with zero or one keys in `provides` may return nothing; the result
- * is treated as a value of true for the single given key.
- *
- * The `utils` argument to the `run` function contains some useful utilities for tasks that help
- * with debugging output:
- *
- * The `utils.waitFor` function can be used to wait for various things to complete:
- *   * a Promise (OK, this isn't so useful)
- *   * a stream, the lines of which are displayed
- *   * an Observable, the data values from which are displayed
- * This is a useful way to show progress to the user while handling streams or other observables.
- *
- * The `utils.status` function updates the step's current status.  It accepts options
- *   * `message` - a short status message such as "Barring the foo"
- *   * `progress` - progress of this task (as a percentage)
- *
- * The `utils.skip` function flags the task as "skipped".  The task must still return its provided
- * values, and this function makes that easy: `return utils.skip({key: value})`.
- *
- * The `utils.step` function adds a 'step' to this task. Steps are pretty basic: the most recent step
- * is considered to be 'running' and all previous steps to be finished.  It's useful as a way of
- * indicating progress from step to step within a larger task.  Call `utils.step({title: 'Step 2'})`
- */
 class TaskGraph {
   constructor(tasks, options={}) {
     tasks.forEach(task => {
@@ -63,7 +21,7 @@ class TaskGraph {
       assert('run' in task, `Task ${task.title} has no run method`);
     });
     this.nodes = tasks.map(task => ({state: 'pending', task: {requires: [], provides: [], ...task}}));
-    this.renderer = options.renderer || (process.stdout.isTTY ? new TerminalRenderer() : new LogRenderer());
+    this.renderer = options.renderer || (process.stdout.isTTY ? new ConsoleRenderer() : new LogRenderer());
   }
 
   /**
@@ -166,20 +124,7 @@ class TaskGraph {
 
 module.exports.TaskGraph = TaskGraph;
 
-/**
- * A renderer for a TaskGraph is responsible for displaying its progress and eventual
- * status.  TerminalRenderer uses terminal output, while LogRenderer just logs events.
- *
- * Renderers get their `start` and `stop` methods called at the beginning and end of a
- * run, and in between get a series of update calls with `change`:
- *
- * - `state` -- the given node's state has changed; value is the new state
- * - `log` -- a line of log output from the step has arrived
- * - `status` -- a status update, with the options to `util.status` as value
- * - `step` -- a substep has begun; the value has {title: ..}
- */
-
-class TerminalRenderer {
+class ConsoleRenderer {
   constructor() {
     this.progressBar = unicodeProgress({width: 30});
   }
@@ -288,6 +233,8 @@ class TerminalRenderer {
   }
 }
 
+exports.ConsoleRenderer = ConsoleRenderer;
+
 class LogRenderer {
   start(nodes) {
   }
@@ -316,6 +263,8 @@ class LogRenderer {
     }
   }
 }
+
+exports.LogRenderer = LogRenderer;
 
 /**
  * Convert a textual byte stream to an observable that calls next() for each
