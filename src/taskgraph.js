@@ -78,10 +78,11 @@ class TaskGraph {
       return value;
     };
 
-    utils.skip = provided => {
+    utils.skip = ({provides, reason}) => {
       node.state = 'skipped';
       this.renderer.update(node, 'state', 'skipped');
-      return provided;
+      this.renderer.update(node, 'skip', reason || 'skipped');
+      return provides;
     };
 
     utils.status = status => {
@@ -161,6 +162,8 @@ class ConsoleRenderer {
       }
       node.output.push(value.toString().trimRight());
       node.output = node.output.slice(-4);
+    } else if (change === 'skip') {
+      node.skipReason = value;
     } else if (change == 'status') {
       if (value.message) {
         node.message = value.message;
@@ -216,7 +219,7 @@ class ConsoleRenderer {
         }
 
       } else if (node.state === 'skipped') {
-        noderep.push(`${logSymbols.info} ${chalk.bold(node.task.title)} (skipped)`);
+        noderep.push(`${logSymbols.info} ${chalk.bold(node.task.title)} (${node.skipReason || 'skipped'})`);
       } else {
         noderep.push(`${logSymbols.success} ${chalk.bold(node.task.title)}`);
       }
@@ -250,6 +253,8 @@ class LogRenderer {
       output = `${node.task.title}: ${value}`;
     } else if (change === 'step') {
       output = `${node.task.title}: start step ${value.title}`;
+    } else if (change === 'skip') {
+      output = `${node.task.title}: skip - ${value}`;
     } else if (change === 'status') {
       if (value.message) {
         output = `${node.task.title}: ${value.message}`;

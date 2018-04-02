@@ -107,7 +107,13 @@ The `utils.skip` function flags the task as "skipped".  The task must still retu
 values, and this function makes that easy:
 
 ```javascript
-return utils.skip({key: value})
+return utils.skip({provides: {key: value}})
+```
+
+You may optionally provide a reason for the skip:
+
+```javascript
+return utils.skip({provides: {key: value}, reason: 'skipped - already complete'})
 ```
 
 ### step
@@ -150,6 +156,7 @@ That renderer should have the following (sync!) methods:
  * `log` -- a line of log output from the task has arrived
  * `status` -- a status update, with the arguments to `util.status` as value
  * `step` -- a substep has begun; the value has `{title: ..}`
+ * `skip` -- a node has been skipped; the value is the reason (this occurs just after the state updates to `skipped`)
 
 ## States
 
