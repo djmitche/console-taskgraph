@@ -75,7 +75,7 @@ suite('src/taskgraph.js', function() {
           requires: [],
           provides: ['a', 'b'],
           run: async (requirements, {skip}) => {
-            return skip({a: 10, b: 20});
+            return skip({provides: {a: 10, b: 20}});
           },
         }];
         const graph = new TaskGraph(nodes, {renderer});
@@ -85,6 +85,28 @@ suite('src/taskgraph.js', function() {
           'start',
           'state running SKIP',
           'state skipped SKIP',
+          'skip skipped SKIP',
+          'stop',
+        ]);
+      });
+
+      test('skips with a reason', async function() {
+        const renderer = new FakeRenderer();
+        const nodes = [{
+          title: 'SKIP',
+          requires: [],
+          provides: [],
+          run: async (requirements, {skip}) => {
+            return skip({reason: 'because'});
+          },
+        }];
+        const graph = new TaskGraph(nodes, {renderer});
+        const context = await graph.run();
+        assume(renderer.updates).to.deeply.equal([
+          'start',
+          'state running SKIP',
+          'state skipped SKIP',
+          'skip because SKIP',
           'stop',
         ]);
       });

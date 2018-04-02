@@ -25,7 +25,7 @@ const delayTask = ({delay, skip, prog, message, ...task}) => {
       res[k] = true;
     }
     if (skip) {
-      return utils.skip(res);
+      return utils.skip(res, 'because..');
     } else {
       return res;
     }
