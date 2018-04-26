@@ -99,7 +99,7 @@ class TaskGraph {
       return value;
     };
 
-    utils.skip = ({provides, reason}) => {
+    utils.skip = ({provides, reason}={}) => {
       node.state = 'skipped';
       this.renderer.update(node, 'state', 'skipped');
       this.renderer.update(node, 'skip', reason || 'skipped');
