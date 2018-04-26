@@ -121,7 +121,16 @@ class TaskGraph {
     try {
       const requirements = {};
       task.requires.forEach(k => requirements[k] = context[k]);
-      let result = await task.run(requirements, utils);
+
+      let result;
+      try {
+        result = await task.run(requirements, utils);
+      } catch (err) {
+        node.state = 'failed';
+        this.renderer.update(node, 'state', 'failed');
+        throw err;
+      }
+
       // as a convenience, provide a single value as a simple 'true'
       if (!result) {
         assert(task.provides.length <= 1,
@@ -174,6 +183,9 @@ class ConsoleRenderer {
       if (value === 'running') {
         node.started = new Date().getTime();
         this.displayed.push(node);
+      } else if (value === 'failed') {
+        // force a re-render since we will likely terminate soon
+        this.render();
       }
     } else if (change === 'step') {
       if (!node.steps) {
@@ -247,6 +259,8 @@ class ConsoleRenderer {
 
       } else if (node.state === 'skipped') {
         noderep.push(`${logSymbols.info} ${chalk.bold(node.task.title)} (${node.skipReason || 'skipped'})`);
+      } else if (node.state === 'failed') {
+        noderep.push(`${logSymbols.error} ${chalk.bold(node.task.title)}`);
       } else {
         noderep.push(`${logSymbols.success} ${chalk.bold(node.task.title)}`);
       }

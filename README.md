@@ -195,3 +195,4 @@ Nodes have the following states (with room to add more):
 * `running` -- currently executing
 * `skipped` -- completed, skipped
 * `finished` -- completed
+* `failed` -- failed with an exception

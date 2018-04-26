@@ -99,6 +99,23 @@ suite('src/taskgraph.js', function() {
       ]);
     });
 
+    test('renders failures', async function() {
+      const renderer = new FakeRenderer();
+      const graph = new TaskGraph([{
+        title: 'FAIL',
+        run: async (requirements) => {
+          throw new Error('uhoh');
+        },
+      }], {renderer});
+      await assume(graph.run()).to.throwAsync();
+      assume(renderer.updates).to.deeply.equal([
+        'start',
+        'state running FAIL',
+        'state failed FAIL',
+        'stop',
+      ]);
+    });
+
     suite('utils.skip', function() {
       test('skips', async function() {
         const renderer = new FakeRenderer();
