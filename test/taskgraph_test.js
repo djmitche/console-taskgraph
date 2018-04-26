@@ -1,4 +1,4 @@
-const {TaskGraph} = require('../src/taskgraph');
+const {TaskGraph, Lock} = require('../src/taskgraph');
 const assume = require('assume');
 const {Readable} = require('stream');
 const Observable = require('zen-observable');
@@ -63,6 +63,38 @@ suite('src/taskgraph.js', function() {
         'state finished D4',
         'state running D5',
         'state finished D5',
+        'stop',
+      ]);
+    });
+
+    test('seralizes with locks', async function() {
+      const renderer = new FakeRenderer();
+      const nodes = [
+        delayTask({title: 'S1', requires: [], provides: ['1'], delay: 2}),
+        delayTask({title: 'S2', requires: [], provides: ['2'], delay: 4}),
+        delayTask({title: 'LA', requires: [], provides: [], locks: ['qbit'], delay: 5}),
+        delayTask({title: 'LB', requires: ['1'], provides: [], locks: ['qbit'], delay: 5}),
+        delayTask({title: 'LC', requires: ['2'], provides: [], locks: ['qbit'], delay: 5}),
+      ];
+      const graph = new TaskGraph(nodes, {
+        renderer,
+        locks: {
+          qbit: new Lock(2),
+        },
+      });
+      await graph.run();
+      assume(renderer.updates).to.deeply.equal([
+        'start',
+        'state running S1',
+        'state running S2',
+        'state running LA', // starts immediately, takes 1 slot from lock
+        'state finished S1',
+        'state running LB', // starts immediately when S1 is done, takes 2nd slot
+        'state finished S2',
+        'state finished LA',
+        'state running LC', // starts when LA releases a slot
+        'state finished LB',
+        'state finished LC',
         'stop',
       ]);
     });

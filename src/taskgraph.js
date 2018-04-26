@@ -16,12 +16,15 @@ const Observable = require('zen-observable');
 
 class TaskGraph {
   constructor(tasks, options={}) {
-    tasks.forEach(task => {
+    this.nodes = tasks.map(task => ({state: 'pending', task: {requires: [], provides: [], locks: [], ...task}}));
+    this.renderer = options.renderer || (process.stdout.isTTY ? new ConsoleRenderer() : new LogRenderer());
+    this.locks = options.locks || {};
+
+    this.nodes.forEach(({task}) => {
       assert('title' in task, 'Task has no title');
       assert('run' in task, `Task ${task.title} has no run method`);
+      assert(task.locks.every(l => l in this.locks), `Task ${task.title} has undefined locks`);
     });
-    this.nodes = tasks.map(task => ({state: 'pending', task: {requires: [], provides: [], ...task}}));
-    this.renderer = options.renderer || (process.stdout.isTTY ? new ConsoleRenderer() : new LogRenderer());
   }
 
   /**
@@ -31,12 +34,29 @@ class TaskGraph {
    */
   async run(context={}) {
     this.renderer.start(this.nodes);
+
+    const nodeCanStart = node => {
+      if (node.state !== 'pending') {
+        return false;
+      }
+
+      if (!node.task.requires.every(k => k in context)) {
+        return false;
+      }
+
+      if (!node.task.locks.every(l => this.locks[l].available())) {
+        return false;
+      }
+
+      return true;
+    };
+
     try {
       await new Promise((resolve, reject) => {
         const refresh = () => {
           let pendingCount = 0;
           this.nodes.forEach(node => {
-            if (node.state === 'pending' && node.task.requires.every(k => k in context)) {
+            if (nodeCanStart(node)) {
               this._runNode(node, context, refresh).catch(reject);
             }
           });
@@ -55,6 +75,7 @@ class TaskGraph {
 
   async _runNode(node, context, refresh) {
     const {task} = node;
+
     const utils = {};
     utils.waitFor = value => {
       if (isStream(value)) {
@@ -96,28 +117,34 @@ class TaskGraph {
     node.state = 'running';
     this.renderer.update(node, 'state', 'running');
 
-    const requirements = {};
-    task.requires.forEach(k => requirements[k] = context[k]);
-    let result = await task.run(requirements, utils);
-    // as a convenience, provide a single value as a simple 'true'
-    if (!result) {
-      assert(task.provides.length <= 1, `Task ${task.title} provides multiple results, but did not return any values`);
-      result = task.provides.length === 1 ? {[task.provides[0]]: true} : {};
-    }
+    node.task.locks.forEach(l => this.locks[l].acquire());
+    try {
+      const requirements = {};
+      task.requires.forEach(k => requirements[k] = context[k]);
+      let result = await task.run(requirements, utils);
+      // as a convenience, provide a single value as a simple 'true'
+      if (!result) {
+        assert(task.provides.length <= 1,
+          `Task ${task.title} provides multiple results, but did not return any values`);
+        result = task.provides.length === 1 ? {[task.provides[0]]: true} : {};
+      }
 
-    // check that the step provided what was expected
-    Object.keys(result).forEach(key => {
-      assert(!(key in context), `Task ${task.title} provided ${key}, but it has already been provided`);
-      assert(task.provides.indexOf(key) !== -1, `Task ${task.title} provided unexpected ${key}`);
-    });
-    task.provides.forEach(key => {
-      assert(key in result, `Task ${task.title} did not provide expected ${key}`);
-    });
-    Object.assign(context, result);
+      // check that the step provided what was expected
+      Object.keys(result).forEach(key => {
+        assert(!(key in context), `Task ${task.title} provided ${key}, but it has already been provided`);
+        assert(task.provides.indexOf(key) !== -1, `Task ${task.title} provided unexpected ${key}`);
+      });
+      task.provides.forEach(key => {
+        assert(key in result, `Task ${task.title} did not provide expected ${key}`);
+      });
+      Object.assign(context, result);
 
-    if (node.state !== 'skipped') {
-      node.state = 'finished';
-      this.renderer.update(node, 'state', 'finished');
+      if (node.state !== 'skipped') {
+        node.state = 'finished';
+        this.renderer.update(node, 'state', 'finished');
+      }
+    } finally {
+      node.task.locks.forEach(l => this.locks[l].release());
     }
     refresh();
   }
@@ -318,3 +345,25 @@ const streamToLoggingObservable = stream => {
     stream.once('error', onError);
   });
 };
+
+class Lock {
+  constructor(N) {
+    this.N = N;
+    this.n = 0;
+  }
+
+  available() {
+    return this.n < this.N;
+  }
+
+  acquire() {
+    assert(this.n < this.N);
+    this.n += 1;
+  }
+
+  release() {
+    this.n -= 1;
+  }
+}
+
+exports.Lock = Lock;
