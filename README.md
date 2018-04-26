@@ -7,6 +7,7 @@ output (sort of like [Listr](https://github.com/SamVerschueren/listr)).
 
 const {TaskGraph} = require('console-taskgraph');
 
+const options = {};
 const graph = new TaskGraph([{
   title: 'A task',
   requires: [],
@@ -36,7 +37,7 @@ const graph = new TaskGraph([{
       sum: requirements['somevalue'] + requirements['thirdvalue']
     };
   },
-}]);
+}], options);
 
 const {sum} = await graph.run();
 console.log(sum);
@@ -126,6 +127,34 @@ indicating progress from step to step within a larger task.  Call like this:
 utils.step({title: 'Step 2'})
 ```
 
+# Locking
+
+In some cases, several tasks may require the same underlying resource.  Locks support delaying
+execution of a task until the resources it requires are available.
+
+Configure locks in the `locks` property of the constructor options:
+
+```javascript
+const {TaskGraph, Lock} = require('console-taskgraph');
+const graph = new TaskGraph([..], {
+  locks: {
+    gpu: new Lock(1),
+  },
+});
+```
+
+And configure tasks to require locks by including the lock name in the `locks` array for the task:
+
+```javascript
+{
+  title: 'Build',
+  locks: ['gpu'],
+  // ...
+}
+```
+
+The `new Lock(n)` constructs a lock that allows `n` tasks to use it simultaneously.
+
 # Renderers
 
 Renderers are responsible for displaying the status of a graph execution as it
@@ -134,7 +163,7 @@ occurs. TaskGraph comes with two renderers, one (pretty) for consoles and one
 `LogRenderer`, respectively.
 
 You can add a custom renderer, if you so choose, by passing a renderer to the
-second argument of the constructor:
+options argument of the constructor:
 
 ```javascript
 new TaskGraph(tasks, {renderer: new ConsoleRenderer()});
