@@ -186,6 +186,7 @@ That renderer should have the following (sync!) methods:
  * `status` -- a status update, with the arguments to `util.status` as value
  * `step` -- a substep has begun; the value has `{title: ..}`
  * `skip` -- a node has been skipped; the value is the reason (this occurs just after the state updates to `skipped`)
+ * `fail` -- a node has failed; the value is the error object
 
 ## States
 

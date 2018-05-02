@@ -112,6 +112,7 @@ suite('src/taskgraph.js', function() {
         'start',
         'state running FAIL',
         'state failed FAIL',
+        'fail Error: uhoh FAIL',
         'stop',
       ]);
     });

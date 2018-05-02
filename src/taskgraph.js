@@ -128,6 +128,7 @@ class TaskGraph {
       } catch (err) {
         node.state = 'failed';
         this.renderer.update(node, 'state', 'failed');
+        this.renderer.update(node, 'fail', err);
         throw err;
       }
 
@@ -183,9 +184,6 @@ class ConsoleRenderer {
       if (value === 'running') {
         node.started = new Date().getTime();
         this.displayed.push(node);
-      } else if (value === 'failed') {
-        // force a re-render since we will likely terminate soon
-        this.render();
       }
     } else if (change === 'step') {
       if (!node.steps) {
@@ -210,6 +208,11 @@ class ConsoleRenderer {
       if (value.progress !== undefined) {
         node.progress = value.progress;
       }
+    } else if (change == 'fail') {
+      node.message = value.toString();
+      // force a re-render since we will likely terminate soon (it is already
+      // marked with status='fail')
+      this.render();
     }
   }
 
@@ -260,7 +263,8 @@ class ConsoleRenderer {
       } else if (node.state === 'skipped') {
         noderep.push(`${logSymbols.info} ${chalk.bold(node.task.title)} (${node.skipReason || 'skipped'})`);
       } else if (node.state === 'failed') {
-        noderep.push(`${logSymbols.error} ${chalk.bold(node.task.title)}`);
+        const msg = node.message ? ` (${node.message})` : '';
+        noderep.push(`${logSymbols.error} ${chalk.bold(node.task.title)}${msg}`);
       } else {
         noderep.push(`${logSymbols.success} ${chalk.bold(node.task.title)}`);
       }
@@ -296,6 +300,8 @@ class LogRenderer {
       output = `${node.task.title}: start step ${value.title}`;
     } else if (change === 'skip') {
       output = `${node.task.title}: skip - ${value}`;
+    } else if (change === 'fail') {
+      output = `${node.task.title}: fail: ${value}`;
     } else if (change === 'status') {
       if (value.message) {
         output = `${node.task.title}: ${value.message}`;
