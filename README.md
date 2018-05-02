@@ -155,6 +155,15 @@ And configure tasks to require locks by including the lock name in the `locks` a
 
 The `new Lock(n)` constructs a lock that allows `n` tasks to use it simultaneously.
 
+# Error Handling
+
+Errors that occur in task execution are propagated out of the `run` method.
+
+However, any already-started tasks are allowed to finish before returning (this is
+the only choice, as a running Promise cannot be cancelled). Any further errors
+from those tasks are indicated in the rendered display, but will not be
+propagated.
+
 # Renderers
 
 Renderers are responsible for displaying the status of a graph execution as it

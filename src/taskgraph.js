@@ -33,6 +33,8 @@ class TaskGraph {
    * be modified in-place and returned.
    */
   async run(context={}) {
+    let firstError = null;
+
     this.renderer.start(this.nodes);
 
     const nodeCanStart = node => {
@@ -55,9 +57,23 @@ class TaskGraph {
       await new Promise((resolve, reject) => {
         const refresh = () => {
           let pendingCount = 0;
+
+          // if an error has occurred, wait until there are no tasks running, then
+          // reject with that error
+          if (firstError) {
+            if (Object.values(this.nodes).every(n => n.state !== 'running')) {
+              reject(firstError);
+            }
+            return;
+          }
+
           this.nodes.forEach(node => {
             if (nodeCanStart(node)) {
-              this._runNode(node, context, refresh).catch(reject);
+              this._runNode(node, context).catch(err => {
+                if (!firstError) {
+                  firstError = err;
+                }
+              }).then(refresh);
             }
           });
           if (Object.values(this.nodes).every(n => n.state === 'finished' || n.state === 'skipped')) {
@@ -73,7 +89,7 @@ class TaskGraph {
     return context;
   }
 
-  async _runNode(node, context, refresh) {
+  async _runNode(node, context) {
     const {task} = node;
 
     const utils = {};
@@ -156,7 +172,6 @@ class TaskGraph {
     } finally {
       node.task.locks.forEach(l => this.locks[l].release());
     }
-    refresh();
   }
 }
 
