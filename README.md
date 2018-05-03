@@ -155,6 +155,15 @@ And configure tasks to require locks by including the lock name in the `locks` a
 
 The `new Lock(n)` constructs a lock that allows `n` tasks to use it simultaneously.
 
+# Error Handling
+
+Errors that occur in task execution are propagated out of the `run` method.
+
+However, any already-started tasks are allowed to finish before returning (this is
+the only choice, as a running Promise cannot be cancelled). Any further errors
+from those tasks are indicated in the rendered display, but will not be
+propagated.
+
 # Renderers
 
 Renderers are responsible for displaying the status of a graph execution as it
@@ -186,6 +195,7 @@ That renderer should have the following (sync!) methods:
  * `status` -- a status update, with the arguments to `util.status` as value
  * `step` -- a substep has begun; the value has `{title: ..}`
  * `skip` -- a node has been skipped; the value is the reason (this occurs just after the state updates to `skipped`)
+ * `fail` -- a node has failed; the value is the error object
 
 ## States
 

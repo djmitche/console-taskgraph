@@ -3,9 +3,12 @@ const assume = require('assume');
 const {Readable} = require('stream');
 const Observable = require('zen-observable');
 
-const delayTask = ({delay, ...task}) => {
+const delayTask = ({delay, failWith, ...task}) => {
   task.run = async (requirements, provide) => {
     await new Promise(resolve => setTimeout(resolve, delay));
+    if (failWith) {
+      throw new Error(failWith);
+    }
     const res = {};
     for (const k of task.provides) {
       res[k] = true;
@@ -112,6 +115,38 @@ suite('src/taskgraph.js', function() {
         'start',
         'state running FAIL',
         'state failed FAIL',
+        'fail Error: uhoh FAIL',
+        'stop',
+      ]);
+    });
+
+    test('completes running tasks before throwing a failure', async function() {
+      const renderer = new FakeRenderer();
+      const graph = new TaskGraph([
+        delayTask({title: 'F1', failWith: 'uhoh 1', requires: [], provides: [], delay: 2}),
+        delayTask({title: 'F2', failWith: 'uhoh 2', requires: [], provides: [], delay: 3}),
+        delayTask({title: 'OK', requires: [], provides: [], delay: 4}),
+        delayTask({title: 'F3', failWith: 'uhoh 3', requires: [], provides: [], delay: 5}),
+      ], {renderer});
+      try {
+        await graph.run();
+        assert(false, 'expected an error');
+      } catch (err) {
+        assume(err).to.match(/uhoh 1/); // first error is thrown..
+      }
+      assume(renderer.updates).to.deeply.equal([
+        'start',
+        'state running F1',
+        'state running F2',
+        'state running OK',
+        'state running F3',
+        'state failed F1',
+        'fail Error: uhoh 1 F1',
+        'state failed F2',
+        'fail Error: uhoh 2 F2',
+        'state finished OK',
+        'state failed F3',
+        'fail Error: uhoh 3 F3',
         'stop',
       ]);
     });
