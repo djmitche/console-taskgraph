@@ -171,6 +171,22 @@ occurs. TaskGraph comes with two renderers, one (pretty) for consoles and one
 (log lines) for non-TTY output.  These are exported as `ConsoleRenderer` and
 `LogRenderer`, respectively.
 
+## ConsoleRenderer
+
+The `ConsoleRenderer` class can take an options object:
+
+```js
+new ConsoleRenderer({
+  elideCompleted: true, // if true, just count completed tasks (can help keep the display short)
+});
+```
+
+## LogRenderer
+
+This class has no options.
+
+## Custom Renderers
+
 You can add a custom renderer, if you so choose, by passing a renderer to the
 options argument of the constructor:
 
