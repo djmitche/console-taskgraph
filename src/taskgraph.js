@@ -178,8 +178,9 @@ class TaskGraph {
 module.exports.TaskGraph = TaskGraph;
 
 class ConsoleRenderer {
-  constructor() {
+  constructor(options) {
     this.progressBar = unicodeProgress({width: 30});
+    this.options = options || {};
   }
 
   start(nodes) {
@@ -233,7 +234,19 @@ class ConsoleRenderer {
 
   render() {
     const now = new Date().getTime();
-    const logoutput = this.displayed.map(node => {
+    let logoutput = [];
+
+    let displayed = this.displayed;
+    if (this.options.elideCompleted) {
+      // omit completed tasks
+      displayed = displayed.filter(n => n.state !== 'finished' && n.state !== 'skipped');
+      const omitted = this.displayed.length - displayed.length;
+      if (omitted) {
+        logoutput.push(chalk.cyanBright(`... ${omitted} completed tasks`));
+      }
+    }
+
+    displayed.forEach(node => {
       let noderep = [];
 
       if (node.state === 'running') {
@@ -284,7 +297,7 @@ class ConsoleRenderer {
         noderep.push(`${logSymbols.success} ${chalk.bold(node.task.title)}`);
       }
 
-      return noderep.join('\n');
+      logoutput.push(noderep.join('\n'));
     });
 
     const numFinished = this.displayed.filter(n => n.state != 'running').length;

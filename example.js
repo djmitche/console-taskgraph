@@ -1,9 +1,10 @@
-let TaskGraph;
+let taskgraph;
 try {
-  TaskGraph = require('console-taskgraph').TaskGraph;
+  taskgraph = require('console-taskgraph');
 } catch (err) {
-  TaskGraph = require('.').TaskGraph;
+  taskgraph = require('.');
 }
+const {TaskGraph, ConsoleRenderer} = taskgraph;
 const assume = require('assume');
 const fs = require('fs');
 const Observable = require('zen-observable');
@@ -69,7 +70,7 @@ const nodes = [
   observableTask({title: 'D7', requires: ['1'], provides: []}),
 ];
 
-const graph = new TaskGraph(nodes);
+const graph = new TaskGraph(nodes, {renderer: new ConsoleRenderer({elideCompleted: true})});
 graph.run().catch(err => {
   console.error(err);
   process.exit(1);
