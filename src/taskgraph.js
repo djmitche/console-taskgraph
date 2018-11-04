@@ -20,11 +20,42 @@ class TaskGraph {
     this.renderer = options.renderer || (process.stdout.isTTY ? new ConsoleRenderer() : new LogRenderer());
     this.locks = options.locks || {};
 
+    const provided = new Set();
+    this.nodes.forEach(({task: {provides}}) => provides.forEach(k => provided.add(k)));
     this.nodes.forEach(({task}) => {
       assert('title' in task, 'Task has no title');
       assert('run' in task, `Task ${task.title} has no run method`);
       assert(task.locks.every(l => l in this.locks), `Task ${task.title} has undefined locks`);
+      assert(task.requires.every(k => provided.has(k)), `Task ${task.title} has unfulfilled requirements`);
     });
+
+    if (options.target) {
+      const target = new Set(Array.isArray(options.target) ? options.target : [options.target]);
+      target.forEach(k => {
+        assert(provided.has(k), `Target ${k} is not provided by any nodes`);
+      });
+      this.nodes = this._target(target);
+    }
+  }
+
+  /**
+   * Reduce the set of nodes to just those required to provide `target` (a Set).
+   */
+  _target(target) {
+    // iterate to increase target to include *all* keys required until a fixed point
+    let lastSize = -1;
+    while (lastSize !== target.size) {
+      lastSize = target.size;
+      // add the `requires` for any nodes that `provide` anything in the current target, to target
+      this.nodes.forEach(({task: {requires, provides}}) => {
+        if (provides.some(k => target.has(k))) {
+          requires.forEach(k => target.add(k));
+        }
+      });
+    }
+
+    // now filter this.nodes to just those nodes providing one of the target keys
+    return this.nodes.filter(({task: {provides}}) => provides.some(k => target.has(k)));
   }
 
   /**
@@ -217,14 +248,14 @@ class ConsoleRenderer {
       node.output = node.output.slice(-4);
     } else if (change === 'skip') {
       node.skipReason = value;
-    } else if (change == 'status') {
+    } else if (change === 'status') {
       if (value.message) {
         node.message = value.message;
       }
       if (value.progress !== undefined) {
         node.progress = value.progress;
       }
-    } else if (change == 'fail') {
+    } else if (change === 'fail') {
       node.message = value.toString();
       // force a re-render since we will likely terminate soon (it is already
       // marked with status='fail')
@@ -300,7 +331,7 @@ class ConsoleRenderer {
       logoutput.push(noderep.join('\n'));
     });
 
-    const numFinished = this.displayed.filter(n => n.state != 'running').length;
+    const numFinished = this.displayed.filter(n => n.state !== 'running').length;
     const pctFinished = Math.trunc(100 * numFinished / Object.keys(this.nodes).length);
     const progress = chalk.cyanBright(`${pctFinished}% finished`);
     logoutput.push(progress);

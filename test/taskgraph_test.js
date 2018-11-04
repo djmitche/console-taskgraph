@@ -70,6 +70,46 @@ suite('src/taskgraph.js', function() {
       ]);
     });
 
+    suite('_target', function() {
+      test('with a target with no requirements', function() {
+        const graph = new TaskGraph(nodes, {target: '1'});
+        assume(graph.nodes.map(n => n.task.title)).to.deeply.equal(['D1']);
+      });
+
+      test('with a target that a node provides among others', function() {
+        const graph = new TaskGraph(nodes, {target: '3'});
+        assume(graph.nodes.map(n => n.task.title)).to.deeply.equal(['D1', 'D2']);
+      });
+
+      test('with a target that a node provides among others', function() {
+        const graph = new TaskGraph(nodes, {target: '3'});
+        assume(graph.nodes.map(n => n.task.title)).to.deeply.equal(['D1', 'D2']);
+      });
+
+      test('with an array of targets', function() {
+        const graph = new TaskGraph(nodes, {target: ['3', '4']});
+        assume(graph.nodes.map(n => n.task.title)).to.deeply.equal(['D1', 'D2', 'D3']);
+      });
+    });
+
+    test('executes a subgraph with targeting', async function() {
+      const renderer = new FakeRenderer();
+      const graph = new TaskGraph(nodes, {renderer, target: '6'});
+      await graph.run();
+      assume(renderer.updates).to.deeply.equal([
+        'start',
+        'state running D1',
+        'state finished D1',
+        'state running D2',
+        'state running D3',
+        'state finished D2',
+        'state finished D3',
+        'state running D4',
+        'state finished D4',
+        'stop',
+      ]);
+    });
+
     test('seralizes with locks', async function() {
       const renderer = new FakeRenderer();
       const nodes = [
