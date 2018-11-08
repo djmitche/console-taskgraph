@@ -164,6 +164,22 @@ the only choice, as a running Promise cannot be cancelled). Any further errors
 from those tasks are indicated in the rendered display, but will not be
 propagated.
 
+# Targetting
+
+By default, every task in the Taskgraph is run, and the graph is complete when
+no tasks remain unfinished.
+
+With the `target` option, you can specify a set of dependencies which must be
+finished.  Only tasks directly or indirectly required to complete those
+dependencies will be run.
+
+
+```js
+const graph = new TaskGraph([..], {
+  target: ['build-linux'],
+});
+```
+
 # Renderers
 
 Renderers are responsible for displaying the status of a graph execution as it
