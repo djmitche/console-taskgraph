@@ -1,4 +1,4 @@
-A dependency-graph-solving task executor (sort of like `make`) with pretty
+A dependency-graph-solving task executor -sort of like `make` but with pretty
 output (sort of like [Listr](https://github.com/SamVerschueren/listr)).
 
 # Usage
