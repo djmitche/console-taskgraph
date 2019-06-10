@@ -61,7 +61,7 @@ const observableTask = ({...task}) => {
 };
 
 const nodes = [
-  delayTask({title: 'D1', requires: [], provides: ['1'], delay: 1000}),
+  delayTask({title: 'D1', requires: ['ok'], provides: ['1'], delay: 1000}),
   delayTask({title: 'D2', requires: ['1'], provides: ['2', '3'], delay: 800, message: 'hi'}),
   delayTask({title: 'D3', requires: ['1'], provides: ['4', '5'], delay: 1500, prog: true}),
   delayTask({title: 'D4', requires: ['3', '4'], provides: ['6'], delay: 1000, skip: true}),
@@ -71,7 +71,7 @@ const nodes = [
 ];
 
 const graph = new TaskGraph(nodes, {renderer: new ConsoleRenderer({elideCompleted: true})});
-graph.run().catch(err => {
+graph.run({ok: true}).catch(err => {
   console.error(err);
   process.exit(1);
 });
