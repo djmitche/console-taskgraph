@@ -26,7 +26,6 @@ class TaskGraph {
       assert('title' in task, 'Task has no title');
       assert('run' in task, `Task ${task.title} has no run method`);
       assert(task.locks.every(l => l in this.locks), `Task ${task.title} has undefined locks`);
-      assert(task.requires.every(k => provided.has(k)), `Task ${task.title} has unfulfilled requirements`);
     });
 
     if (options.target) {
@@ -65,6 +64,13 @@ class TaskGraph {
    */
   async run(context={}) {
     let firstError = null;
+
+    // now that we have the given context, check that all required values are provided
+    const provided = new Set(Object.keys(context));
+    this.nodes.forEach(({task: {provides}}) => provides.forEach(k => provided.add(k)));
+    this.nodes.forEach(({task}) => {
+      assert(task.requires.every(k => provided.has(k)), `Task ${task.title} has unfulfilled requirements`);
+    });
 
     this.renderer.start(this.nodes);
 
