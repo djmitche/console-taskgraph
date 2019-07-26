@@ -1,13 +1,17 @@
 const {TaskGraph, Lock} = require('../src/taskgraph');
 const assume = require('assume');
+const assert = require('assert');
 const {Readable} = require('stream');
 const Observable = require('zen-observable');
 
-const delayTask = ({delay, failWith, ...task}) => {
+const delayTask = ({delay, failWith, result, ...task}) => {
   task.run = async (requirements, provide) => {
     await new Promise(resolve => setTimeout(resolve, delay));
     if (failWith) {
       throw new Error(failWith);
+    }
+    if (result) {
+      return result;
     }
     const res = {};
     for (const k of task.provides) {
@@ -187,6 +191,55 @@ suite('src/taskgraph.js', function() {
         'state finished OK',
         'state failed F3',
         'fail Error: uhoh 3 F3',
+        'stop',
+      ]);
+    });
+
+    test('succeeds if a task provides nothing', async function() {
+      const renderer = new FakeRenderer();
+      const graph = new TaskGraph([
+        delayTask({title: 'OK', requires: [], provides: [], result: null, delay: 0}),
+      ], {renderer});
+      await graph.run();
+      assume(renderer.updates).to.deeply.equal([
+        'start',
+        'state running OK',
+        'state finished OK',
+        'stop',
+      ]);
+    });
+
+    test('succeeds if a task provides one thing and returns nothing', async function() {
+      const renderer = new FakeRenderer();
+      const graph = new TaskGraph([
+        delayTask({title: 'OK', requires: [], provides: ['a'], result: null, delay: 0}),
+      ], {renderer});
+      const context = await graph.run();
+      assume(context).to.deeply.equal({a: true});
+      assume(renderer.updates).to.deeply.equal([
+        'start',
+        'state running OK',
+        'state finished OK',
+        'stop',
+      ]);
+    });
+
+    test('fails if a task does not return all provides keys', async function() {
+      const renderer = new FakeRenderer();
+      const graph = new TaskGraph([
+        delayTask({title: 'OK', requires: [], provides: ['a', 'b'], result: {a: 10}, delay: 0}),
+      ], {renderer});
+      try {
+        await graph.run();
+        assert(false, 'expected an error');
+      } catch (err) {
+        assume(err).to.match(/did not provide expected/); // first error is thrown..
+      }
+      assume(renderer.updates).to.deeply.equal([
+        'start',
+        'state running OK',
+        'state failed OK',
+        'fail AssertionError [ERR_ASSERTION]: Task OK did not provide expected b OK',
         'stop',
       ]);
     });

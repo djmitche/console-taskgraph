@@ -186,21 +186,28 @@ class TaskGraph {
       }
 
       // as a convenience, provide a single value as a simple 'true'
-      if (!result) {
-        assert(task.provides.length <= 1,
-          `Task ${task.title} provides multiple results, but did not return any values`);
-        result = task.provides.length === 1 ? {[task.provides[0]]: true} : {};
-      }
+      try {
+        if (!result) {
+          assert(task.provides.length <= 1,
+            `Task ${task.title} provides multiple results, but did not return any values`);
+          result = task.provides.length === 1 ? {[task.provides[0]]: true} : {};
+        }
 
-      // check that the step provided what was expected
-      Object.keys(result).forEach(key => {
-        assert(!(key in context), `Task ${task.title} provided ${key}, but it has already been provided`);
-        assert(task.provides.indexOf(key) !== -1, `Task ${task.title} provided unexpected ${key}`);
-      });
-      task.provides.forEach(key => {
-        assert(key in result, `Task ${task.title} did not provide expected ${key}`);
-      });
-      Object.assign(context, result);
+        // check that the step provided what was expected
+        Object.keys(result).forEach(key => {
+          assert(!(key in context), `Task ${task.title} provided ${key}, but it has already been provided`);
+          assert(task.provides.indexOf(key) !== -1, `Task ${task.title} provided unexpected ${key}`);
+        });
+        task.provides.forEach(key => {
+          assert(key in result, `Task ${task.title} did not provide expected ${key}`);
+        });
+        Object.assign(context, result);
+      } catch (err) {
+        node.state = 'failed';
+        this.renderer.update(node, 'state', 'failed');
+        this.renderer.update(node, 'fail', err);
+        throw err;
+      }
 
       if (node.state !== 'skipped') {
         node.state = 'finished';
