@@ -1,7 +1,7 @@
 version: 0
 tasks:
-  - provisionerId: '{{ taskcluster.docker.provisionerId }}'
-    workerType: '{{ taskcluster.docker.workerType }}'
+  - provisionerId: proj-misc
+    workerType: ci
     extra:
       github:
         events:
