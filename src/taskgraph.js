@@ -110,7 +110,7 @@ class TaskGraph {
                 if (!firstError) {
                   // edit the message and stack to include a reference to the failing task
                   err.message = err.message.replace(/(^.*)/, `$1 (while executing task ${node.task.title})`);
-                  err.stack = err.stack.replace(/(^.*)\n/, `$1 (while executing task ${node.task.title})`);
+                  err.stack = err.stack.replace(/(^.*)\n/, `$1 (while executing task ${node.task.title})\n`);
                   firstError = err;
                 }
               }).then(refresh);
