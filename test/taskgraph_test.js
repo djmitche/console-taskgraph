@@ -176,7 +176,8 @@ suite('src/taskgraph.js', function() {
         await graph.run();
         assert(false, 'expected an error');
       } catch (err) {
-        assume(err).to.match(/uhoh 1/); // first error is thrown..
+        // first error is thrown, with annotation of the failing task
+        assume(err.toString()).to.match(/Error: uhoh 1 \(while executing task F1\)/);
       }
       assume(renderer.updates).to.deeply.equal([
         'start',
