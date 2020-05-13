@@ -108,6 +108,9 @@ class TaskGraph {
             if (nodeCanStart(node)) {
               this._runNode(node, context).catch(err => {
                 if (!firstError) {
+                  // edit the message and stack to include a reference to the failing task
+                  err.message = err.message.replace(/(^.*)/, `$1 (while executing task ${node.task.title})`);
+                  err.stack = err.stack.replace(/(^.*)\n/, `$1 (while executing task ${node.task.title})`);
                   firstError = err;
                 }
               }).then(refresh);
